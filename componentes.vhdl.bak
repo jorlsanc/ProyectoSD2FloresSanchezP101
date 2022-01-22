@@ -1,0 +1,20 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+package componentes is 
+component registro_sost
+	generic (n: integer:= 4);
+	port( Resetn, Clock	:in std_logic;
+		En					:in std_logic;
+		Entrada			:in std_logic_vector(n-1 downto 0);
+		Q					:out std_logic_vector(n-1 downto 0));
+end component;
+
+component busmux2a1
+	generic (n: integer:= 4);
+	port(	sel				:in std_logic;
+		ent0, ent1		:in std_logic_vector(n-1 downto 0);
+		s					:out std_logic_vector(n-1 downto 0));
+end component;
+
+end componentes;	
