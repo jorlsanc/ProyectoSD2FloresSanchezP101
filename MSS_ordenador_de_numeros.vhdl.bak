@@ -1,0 +1,97 @@
+library ieee;
+use ieee_std_logic_1164.all;
+use work.componentes.all;
+
+--controladora del ordenador de numero--
+entity MSS_ordenador_de_numeros is
+	generic(n: integer := 4);
+	port( Clock, Resetn		: in std_logic;
+			Start, Writin, Rd	: in std_logic;
+			DataIn				: in std_logic_vector(n-1 downto 0);
+			RAdd					: in integer range 0 to 3;
+			DataOut				: buffer std_logic_vector(n-1 downto 0);
+			Done					: buffer std_logic);
+end MSS_ordenador_de_numeros;
+
+architecture comportamiento of MSS_ordenador_de_numeros is
+	type estado is (s1,s2,s3,s4,s5,s6,s7,s8, s9);
+	signal y: estado;
+	signal Ci, Cj: integer range 0 to 3;
+	signal Rin: std_logic_vector(3 downto 0);
+	type RegArray is array (3 downto 0) of std_logic_vector(n-1 downto 0);
+	signal R: RegArray;
+	signal RData, ABMUX: std_logic_vector(n-1 downto 0);
+	signal Int, CSel, Wr, BltA: std_logic;
+	signal CMux, IMux : integer range 0 to 3;
+	signal Ain, Bin, Aout, Bout: std_logic;
+	signal Li, Ei, Lj, Ej, zi, zj: std_logic;
+	signal zero: integer range 3 downto 0; --dato para cargar Ci=0--
+	signal A, B, ABData: std_logic(n-1 downto 0);
+	
+	begin 
+		--Transiciones de la MSS--
+		MSS_Transiciones: process(Clock,Resetn)
+		begin
+			if Resetn = '0' then y<=s1;
+			elsif (Clock'event and Clock = '1') then 
+				case y is 
+					when s1 => if Start = '0' then y<= s1; else y<= s2; end if;
+					when s2 => y<= s3;
+					when s3 => y<= s4;
+					when s4 => y<= s5;
+					when s5 => if BltA = '1' then y<= s6; else y<= s8; end if;
+					when s6 => y<= s7;
+					when s7 => y<= s8;
+					when s8 => if zj = '0' then y<=s4; 
+								  elsif zi ='0'then y<= s2;
+								  else y<= s9; end if;
+					when s9 => if Start = '1' then y<=s9; else y<= s1; end if;
+				end case;
+			end if;
+		end process;
+--Salidas generadas por la MSS
+  Int<= '0' when y = s1 else '1';
+  Done<= '1' when y = s9 else '0';
+
+		MSS_salidas: process (y, zi, zj)
+		begin
+		Li<='0'; Ei<='0'; Lj<='0'; Ej<='0'; Csel<='0';
+		Wr<='0'; Ain<='0'; Bin<='0'; Aout<='0'; Bout<='0';
+		case y is
+			when s1 => Li<='1'; Ei<='1';
+			when s2 => Ain<='1'; Lj<='1';Ej<='1';
+			when s3 => Ej<='1';
+			when s4 => Bin<='1'; Csel<='1';
+			when s5 => --ninguna salida
+			when s6 => Csel<='1'; Wr<='1';
+			when s7 => Wr<='1'; Bout<='1';
+			when s8 => Ain<='1';
+						  if zj ='0' then Ej<='1'; else Ej<='0';
+						  if zi<='0' then Ei<='1' else Ei<='0';end if; end if;
+			when s9 => --salida DONE ya asignada
+		end case;
+	end process;
+	
+	--Procesador de datos
+	
+	registros_datos: for i in 0 to 3 generate
+	registros_datos: registro_sost generic map (n=>n)
+		port map (Resetn, Clock, Data, RData, Rin(i), R(i));
+	end generate; 
+	
+	registro_A: registro_sost generic map (n=>n)
+		port map (Resetn, Clock, ABData, Ain, A);
+	
+	registro_B: registro_sost generic map (n=>n)
+		port map (Resetn, Clock, ABData, Bin, B);
+	
+	BltA<= '1' when B<A else '0'; 
+	ABMux <= A when Bout <='0' else B;
+	RData <= ABMux when WrInit ='0' else DataIn;
+	
+	zero <='0';
+	
+	C_i: contador_up1 
+	
+	C_j:
+					
